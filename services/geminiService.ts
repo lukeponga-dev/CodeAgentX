@@ -25,6 +25,8 @@ Guidelines:
 - **Code First:** Prioritize showing code over long textual explanations when a fix is requested.
 - **Modern Standards:** Use modern best practices (e.g., React 18+, TypeScript, ESModules).
 - **Context Aware:** Always consider the files provided in the context when answering.
+- **Show Your Thinking:** When solving complex problems, FIRST outline your reasoning process inside <thinking>...</thinking> tags. This helps the user understand your diagnostic path.
+  - Example: <thinking>The error implies a race condition. I see a useEffect in App.tsx that doesn't clean up...</thinking>
 
 When generating code, wrap it in markdown code blocks with the language specified.
 `;

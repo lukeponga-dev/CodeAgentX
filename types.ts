@@ -22,6 +22,7 @@ export interface Message {
   text: string;
   timestamp: number;
   isThinking?: boolean; // For UI state
+  thoughts?: string; // Captured reasoning trace
   attachments?: FileContext[]; // Attachments specific to this message
 }
 

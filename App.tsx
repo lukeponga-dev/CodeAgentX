@@ -49,6 +49,17 @@ export default function App() {
   // Memoize graph data calculation to avoid reprocessing on every render
   const graphData = useMemo(() => generateDependencyGraph(files), [files]);
 
+  // Helper to process response text and extract thoughts
+  const processResponse = (fullText: string): { text: string; thoughts?: string } => {
+    const thinkingMatch = fullText.match(/<thinking>([\s\S]*?)<\/thinking>/);
+    if (thinkingMatch) {
+      const thoughts = thinkingMatch[1].trim();
+      const text = fullText.replace(/<thinking>[\s\S]*?<\/thinking>/, '').trim();
+      return { text, thoughts };
+    }
+    return { text: fullText };
+  };
+
   const triggerAutoAnalysis = async (currentFiles: FileContext[], newFileCount: number, source: 'upload' | 'github') => {
     const thinkingMsgId = 'auto-think-' + Date.now();
     
@@ -80,9 +91,11 @@ export default function App() {
         Math.max(thinkingBudget, 2048) // Ensure at least some thinking for analysis
       );
 
+      const { text, thoughts } = processResponse(responseText);
+
       setMessages(prev => prev.map(msg => 
         msg.id === thinkingMsgId 
-          ? { ...msg, text: responseText, isThinking: false }
+          ? { ...msg, text: text, thoughts: thoughts, isThinking: false }
           : msg
       ));
       setAgentState({ status: 'idle' });
@@ -233,10 +246,12 @@ export default function App() {
         thinkingBudget
       );
 
+      const { text, thoughts } = processResponse(responseText);
+
       // Replace thinking message with actual response
       setMessages(prev => prev.map(msg => 
         msg.id === thinkingMsgId 
-          ? { ...msg, text: responseText, isThinking: false }
+          ? { ...msg, text: text, thoughts: thoughts, isThinking: false }
           : msg
       ));
       setAgentState({ status: 'idle' });
