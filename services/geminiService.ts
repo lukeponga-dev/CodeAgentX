@@ -31,6 +31,26 @@ When generating code, wrap it in markdown code blocks with the language specifie
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Helper to extract explicit retry delay from error details or message
+const getRetryDelay = (error: any): number => {
+  // 1. Check for specific RetryInfo in details (Google API standard)
+  if (error.details && Array.isArray(error.details)) {
+    const retryInfo = error.details.find((d: any) => d['@type']?.includes('RetryInfo'));
+    if (retryInfo && retryInfo.retryDelay) {
+      const seconds = parseInt(retryInfo.retryDelay.replace('s', ''), 10);
+      if (!isNaN(seconds)) return (seconds + 1) * 1000; // Add 1s buffer
+    }
+  }
+  
+  // 2. Parse message for "retry in X s" pattern
+  const match = error.message?.match(/retry in (\d+(\.\d+)?)s/);
+  if (match && match[1]) {
+    return (parseFloat(match[1]) + 1) * 1000;
+  }
+
+  return 0;
+}
+
 export const sendMessageToGemini = async (
   prompt: string,
   mode: AgentMode,
@@ -101,7 +121,8 @@ export const sendMessageToGemini = async (
   contentParts.push({ text: prompt });
 
   let retries = 0;
-  const MAX_RETRIES = 3;
+  // Increase max retries to handle longer wait times or multiple backoffs
+  const MAX_RETRIES = 5;
   
   while (retries <= MAX_RETRIES) {
     try {
@@ -128,9 +149,16 @@ export const sendMessageToGemini = async (
 
       if (isQuotaError && retries < MAX_RETRIES) {
         retries++;
-        // Exponential backoff: 2s, 4s, 8s
-        const delay = 1000 * Math.pow(2, retries);
-        console.warn(`Gemini API Quota/Rate Limit. Retrying in ${delay}ms... (Attempt ${retries}/${MAX_RETRIES})`);
+        
+        let delay = getRetryDelay(error);
+        
+        // If no explicit delay found, use exponential backoff
+        // Base: 2s -> 2, 4, 8, 16, 32
+        if (delay === 0) {
+            delay = 2000 * Math.pow(2, retries); 
+        }
+
+        console.warn(`Gemini API Quota/Rate Limit. Waiting ${delay}ms before retry (Attempt ${retries}/${MAX_RETRIES})`);
         await wait(delay);
         continue;
       }
@@ -138,7 +166,7 @@ export const sendMessageToGemini = async (
       console.error("Gemini API Error:", error);
       
       if (isQuotaError) {
-        return "Error: System is currently overloaded or quota exceeded. Please try again in a few moments or switch to FAST mode.";
+        return `Error: System overloaded or quota exceeded. The model asked to wait, but retries were exhausted. \n\nTip: Try switching to **FAST** mode (Gemini Flash) which has higher limits.`;
       }
 
       return `Error: ${error instanceof Error ? error.message : "Unknown error occurred"}`;
