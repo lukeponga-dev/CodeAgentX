@@ -1,0 +1,5 @@
+{
+  "name": "CodeAgent X - Gemini 3 Engineer",
+  "description": "An autonomous multimodal software engineering agent powered by Gemini 3. It analyzes repositories, architectural diagrams, and failure signals to produce high-quality fixes.",
+  "requestFramePermissions": []
+}
