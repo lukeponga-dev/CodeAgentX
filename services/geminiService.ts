@@ -35,7 +35,8 @@ export const sendMessageToGemini = async (
   prompt: string,
   mode: AgentMode,
   contextFiles: FileContext[],
-  history: { role: string; parts: { text: string }[] }[]
+  history: { role: string; parts: { text: string }[] }[],
+  relevantFileIds: string[] | null = null
 ): Promise<string> => {
   
   // 1. Select Model based on Mode
@@ -57,12 +58,17 @@ export const sendMessageToGemini = async (
   // We prepend the "Repository Context" to the user's prompt to simulate having access to the repo.
   const contentParts: any[] = [];
 
+  // Determine which files to include in the context
+  const filesToInclude = relevantFileIds 
+    ? contextFiles.filter(f => relevantFileIds.includes(f.id))
+    : contextFiles;
+
   // Add context files first
-  if (contextFiles.length > 0) {
+  if (filesToInclude.length > 0) {
     const contextDescription = "Here is the active file context and failure signals for your analysis:\n";
     contentParts.push({ text: contextDescription });
 
-    contextFiles.forEach(file => {
+    filesToInclude.forEach(file => {
       if (file.type === 'image') {
         contentParts.push({
           inlineData: {
