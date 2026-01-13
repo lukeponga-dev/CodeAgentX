@@ -305,13 +305,6 @@ export default function App() {
           <div className="flex items-center gap-6">
              {/* Thinking Budget Slider */}
              <div className="flex items-center gap-3">
-               <div className="flex flex-col items-end">
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-gray-300">
-                    <Brain size={12} className="text-purple-400" />
-                    <span>Thinking Budget</span>
-                  </div>
-                  <span className="text-[10px] text-gray-500">{thinkingBudget} tokens</span>
-               </div>
                <input 
                  type="range"
                  min="0"
@@ -320,7 +313,7 @@ export default function App() {
                  value={thinkingBudget}
                  onChange={(e) => setThinkingBudget(parseInt(e.target.value))}
                  className="w-24 h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-purple-500 hover:accent-purple-400"
-                 title={`Current budget: ${thinkingBudget} tokens`}
+                 title={`Thinking Budget: ${thinkingBudget} tokens`}
                />
              </div>
 
