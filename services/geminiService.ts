@@ -1,9 +1,9 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { AgentMode, FileContext } from '../types';
 
-// Initialize the client. 
-// API Key is guaranteed to be in process.env.API_KEY per instructions.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize the client.
+const apiKey = process.env.API_KEY || '';
+const ai = new GoogleGenAI({ apiKey: apiKey });
 
 const SYSTEM_INSTRUCTION = `
 You are CodeAgent X, an elite autonomous senior software engineer and architect. 
@@ -33,25 +33,25 @@ When generating code, wrap it in markdown code blocks with the language specifie
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Helper to extract explicit retry delay from error details or message
 const getRetryDelay = (error: any): number => {
-  // 1. Check for specific RetryInfo in details (Google API standard)
-  if (error.details && Array.isArray(error.details)) {
-    const retryInfo = error.details.find((d: any) => d['@type']?.includes('RetryInfo'));
+  const actualError = error.error || error;
+
+  if (actualError.details && Array.isArray(actualError.details)) {
+    const retryInfo = actualError.details.find((d: any) => d['@type'] && d['@type'].includes('RetryInfo'));
     if (retryInfo && retryInfo.retryDelay) {
       const seconds = parseInt(retryInfo.retryDelay.replace('s', ''), 10);
-      if (!isNaN(seconds)) return (seconds + 1) * 1000; // Add 1s buffer
+      if (!isNaN(seconds)) return (seconds + 1) * 1000;
     }
   }
   
-  // 2. Parse message for "retry in X s" pattern
-  const match = error.message?.match(/retry in (\d+(\.\d+)?)s/);
+  const message = actualError.message || '';
+  const match = message.match(/retry in (\d+(\.\d+)?)s/);
   if (match && match[1]) {
     return (parseFloat(match[1]) + 1) * 1000;
   }
 
   return 0;
-}
+};
 
 export const sendMessageToGemini = async (
   prompt: string,
@@ -62,32 +62,24 @@ export const sendMessageToGemini = async (
   thinkingBudget: number = 0
 ): Promise<string> => {
   
-  // 1. Select Model based on Mode
   const modelName = mode === AgentMode.ARCHITECT 
     ? 'gemini-3-pro-preview' 
     : 'gemini-3-flash-preview';
 
-  // 2. Prepare Config
   const config: any = {
     systemInstruction: SYSTEM_INSTRUCTION,
   };
 
-  // Enable thinking if budget > 0
-  // Gemini 3 and 2.5 models support thinking config
   if (thinkingBudget > 0) {
     config.thinkingConfig = { thinkingBudget };
   }
 
-  // 3. Construct Content Parts
-  // We prepend the "Repository Context" to the user's prompt to simulate having access to the repo.
   const contentParts: any[] = [];
 
-  // Determine which files to include in the context
   const filesToInclude = relevantFileIds 
     ? contextFiles.filter(f => relevantFileIds.includes(f.id))
     : contextFiles;
 
-  // Add context files first
   if (filesToInclude.length > 0) {
     const contextDescription = "Here is the active file context and failure signals for your analysis:\n";
     contentParts.push({ text: contextDescription });
@@ -121,11 +113,9 @@ export const sendMessageToGemini = async (
     });
   }
 
-  // Add the actual user prompt
   contentParts.push({ text: prompt });
 
   let retries = 0;
-  // Increase max retries to handle longer wait times or multiple backoffs
   const MAX_RETRIES = 5;
   
   while (retries <= MAX_RETRIES) {
@@ -142,22 +132,27 @@ export const sendMessageToGemini = async (
       return response.text || "I analyzed the input but could not generate a textual response.";
 
     } catch (error: any) {
+      const actualError = error.error || error;
+      
       // Basic detection of rate limit/quota errors
+      const status = actualError?.status;
+      const code = actualError?.code;
+      const message = actualError?.message || '';
+
       const isQuotaError = 
-        error?.status === 429 || 
-        error?.code === 429 || 
-        error?.status === 503 ||
-        error?.message?.includes('429') || 
-        error?.message?.includes('Quota exceeded') ||
-        error?.message?.includes('RESOURCE_EXHAUSTED');
+        status === 429 || 
+        code === 429 || 
+        status === 503 ||
+        status === 'RESOURCE_EXHAUSTED' ||
+        message.includes('429') || 
+        message.includes('Quota exceeded') ||
+        message.includes('RESOURCE_EXHAUSTED');
 
       if (isQuotaError && retries < MAX_RETRIES) {
         retries++;
         
         let delay = getRetryDelay(error);
         
-        // If no explicit delay found, use exponential backoff
-        // Base: 2s -> 2, 4, 8, 16, 32
         if (delay === 0) {
             delay = 2000 * Math.pow(2, retries); 
         }
@@ -170,10 +165,11 @@ export const sendMessageToGemini = async (
       console.error("Gemini API Error:", error);
       
       if (isQuotaError) {
-        return `Error: System overloaded or quota exceeded. The model asked to wait, but retries were exhausted. \n\nTip: Try switching to **FAST** mode (Gemini Flash) which has higher limits.`;
+        return `Error: System overloaded or quota exceeded. The model asked to wait, but retries were exhausted after ${retries} attempts. \n\nTip: Try switching to **FAST** mode (Gemini Flash) which has higher limits.`;
       }
 
-      return `Error: ${error instanceof Error ? error.message : "Unknown error occurred"}`;
+      const errorMessage = actualError instanceof Error ? actualError.message : (message || "Unknown error occurred");
+      return `Error: ${errorMessage}`;
     }
   }
   

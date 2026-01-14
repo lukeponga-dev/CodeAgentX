@@ -266,6 +266,74 @@ export default function App() {
     }
   };
 
+  const handleCodeReview = async (code: string, language: string) => {
+    setAgentState({ status: 'analyzing' });
+
+    const reviewPrompt = `
+      Please review the following ${language} code snippet. 
+      
+      Focus on:
+      1. Potential bugs and logic errors.
+      2. Security vulnerabilities.
+      3. Code style and best practice improvements.
+      4. Performance optimizations.
+
+      Provide the review in a concise structured format, followed by the corrected code block if necessary.
+
+      Code to Review:
+      \`\`\`${language}
+      ${code}
+      \`\`\`
+    `;
+
+    const thinkingMsgId = 'review-' + Date.now();
+    
+    // Optimistic UI: Add the request to chat history effectively
+    const userMsg: Message = {
+      id: 'req-' + Date.now(),
+      role: 'user',
+      text: `Review this ${language} code for bugs and best practices.`,
+      timestamp: Date.now()
+    };
+    
+    setMessages(prev => [...prev, userMsg, {
+      id: thinkingMsgId,
+      role: 'model',
+      text: '',
+      timestamp: Date.now(),
+      isThinking: true
+    }]);
+
+    try {
+      // Use ARCHITECT mode for reviews to get better reasoning
+      const responseText = await sendMessageToGemini(
+        reviewPrompt,
+        AgentMode.ARCHITECT,
+        files,
+        [], 
+        null,
+        2048 // Sufficient budget for code review reasoning
+      );
+
+      const { text, thoughts } = processResponse(responseText);
+
+      setMessages(prev => prev.map(msg => 
+        msg.id === thinkingMsgId 
+          ? { ...msg, text: text, thoughts: thoughts, isThinking: false }
+          : msg
+      ));
+      setAgentState({ status: 'idle' });
+
+    } catch (error) {
+      setMessages(prev => prev.map(msg => 
+        msg.id === thinkingMsgId 
+          ? { ...msg, text: "Unable to complete code review at this time.", isThinking: false }
+          : msg
+      ));
+      setAgentState({ status: 'error' });
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -274,42 +342,50 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-[#0d1117] text-gray-100 font-sans overflow-hidden">
+    <div className="flex h-screen w-screen bg-cosmic-950 text-cosmic-100 font-sans overflow-hidden">
+      {/* Background Ambience */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-accent-purple/5 blur-[120px]"></div>
+         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-accent-emerald/5 blur-[120px]"></div>
+      </div>
+
       {/* Sidebar: Repository Context */}
-      <FileTree 
-        files={files} 
-        onRemove={removeFile} 
-        onUpload={handleFileUpload}
-        onGithubImport={handleGithubImport}
-        isImporting={isImporting}
-      />
+      <div className="z-10 relative h-full flex shrink-0">
+          <FileTree 
+            files={files} 
+            onRemove={removeFile} 
+            onUpload={handleFileUpload}
+            onGithubImport={handleGithubImport}
+            isImporting={isImporting}
+          />
+      </div>
 
       {/* Main Area */}
-      <div className="flex-1 flex flex-col h-full relative">
+      <div className="flex-1 flex flex-col h-full relative z-10">
         
         {/* Header */}
-        <header className="h-16 border-b border-gray-800 flex items-center justify-between px-6 bg-[#0d1117]/95 backdrop-blur z-10 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-emerald-900/20">
+        <header className="h-16 border-b border-white/5 flex items-center justify-between px-6 glass-panel z-20 shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="w-9 h-9 bg-gradient-to-tr from-emerald-500 to-cyan-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-emerald-500/20 ring-1 ring-white/10">
               <Sparkles size={18} />
             </div>
             <div>
-              <h1 className="font-bold text-gray-100 tracking-tight">CodeAgent X</h1>
-              <div className="flex items-center gap-2 text-xs text-gray-500">
-                <span className={`w-2 h-2 rounded-full ${agentState.status === 'analyzing' ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`}></span>
-                {agentState.status === 'analyzing' ? 'Reasoning...' : 'System Online'}
+              <h1 className="font-bold text-gray-100 tracking-tight text-lg">CodeAgent X</h1>
+              <div className="flex items-center gap-2 text-[10px] text-gray-400 font-mono uppercase tracking-widest">
+                <span className={`w-1.5 h-1.5 rounded-full ${agentState.status === 'analyzing' ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`}></span>
+                {agentState.status === 'analyzing' ? 'Reasoning Engine Active' : 'System Online'}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
             {/* View Toggle */}
-            <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-800">
+            <div className="flex bg-cosmic-900/50 p-1 rounded-lg border border-white/5">
               <button
                 onClick={() => setViewMode(ViewMode.CHAT)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                   viewMode === ViewMode.CHAT
-                    ? 'bg-gray-800 text-gray-200 shadow-sm border border-gray-700'
+                    ? 'bg-cosmic-700 text-white shadow-sm ring-1 ring-white/5'
                     : 'text-gray-500 hover:text-gray-300'
                 }`}
               >
@@ -320,7 +396,7 @@ export default function App() {
                 onClick={() => setViewMode(ViewMode.GRAPH)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                   viewMode === ViewMode.GRAPH
-                    ? 'bg-gray-800 text-gray-200 shadow-sm border border-gray-700'
+                    ? 'bg-cosmic-700 text-white shadow-sm ring-1 ring-white/5'
                     : 'text-gray-500 hover:text-gray-300'
                 }`}
               >
@@ -330,12 +406,12 @@ export default function App() {
             </div>
 
             {/* Mode Toggle */}
-            <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-800">
+            <div className="flex bg-cosmic-900/50 p-1 rounded-lg border border-white/5">
               <button 
                 onClick={() => handleModeChange(AgentMode.ARCHITECT)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                   agentMode === AgentMode.ARCHITECT 
-                    ? 'bg-gray-800 text-emerald-400 shadow-sm border border-gray-700' 
+                    ? 'bg-cosmic-700 text-accent-emerald shadow-sm ring-1 ring-emerald-500/20' 
                     : 'text-gray-500 hover:text-gray-300'
                 }`}
               >
@@ -346,7 +422,7 @@ export default function App() {
                 onClick={() => handleModeChange(AgentMode.FAST)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                   agentMode === AgentMode.FAST 
-                    ? 'bg-gray-800 text-blue-400 shadow-sm border border-gray-700' 
+                    ? 'bg-cosmic-700 text-accent-cyan shadow-sm ring-1 ring-cyan-500/20' 
                     : 'text-gray-500 hover:text-gray-300'
                 }`}
               >
@@ -363,7 +439,11 @@ export default function App() {
             <main className="h-full overflow-y-auto p-6 scroll-smooth pb-0">
               <div className="max-w-4xl mx-auto pb-4">
                 {messages.map((msg) => (
-                  <MessageBubble key={msg.id} message={msg} />
+                  <MessageBubble 
+                    key={msg.id} 
+                    message={msg} 
+                    onCodeReview={handleCodeReview}
+                  />
                 ))}
                 <div ref={messagesEndRef} />
               </div>
@@ -377,38 +457,39 @@ export default function App() {
 
         {/* Input Area */}
         {viewMode === ViewMode.CHAT && (
-          <div className="p-6 pt-2 bg-gradient-to-t from-[#0d1117] via-[#0d1117] to-transparent shrink-0">
+          <div className="p-6 pt-2 shrink-0 bg-gradient-to-t from-cosmic-950 via-cosmic-950 to-transparent">
             <div className="max-w-4xl mx-auto relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500/20 to-blue-500/20 rounded-xl blur opacity-0 group-hover:opacity-100 transition duration-500"></div>
-              <div className="relative bg-gray-900 border border-gray-700 rounded-xl overflow-hidden shadow-2xl">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500/30 to-blue-500/30 rounded-2xl blur opacity-0 group-hover:opacity-100 transition duration-500"></div>
+              <div className="relative bg-cosmic-900/80 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-black/5">
                 <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder={files.length > 0 ? "Ask about the loaded context..." : "Describe a task or upload files for analysis..."}
-                  className="w-full bg-transparent border-none text-gray-200 p-4 focus:ring-0 resize-none min-h-[60px] max-h-[200px] text-sm font-mono placeholder-gray-600"
+                  className="w-full bg-transparent border-none text-gray-200 p-5 focus:ring-0 resize-none min-h-[70px] max-h-[200px] text-sm font-mono placeholder-gray-600 leading-relaxed"
                   rows={Math.min(input.split('\n').length + 1, 8)}
                 />
-                <div className="flex items-center justify-between px-3 py-2 bg-gray-800/50 border-t border-gray-800">
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <span className="font-bold text-gray-400">⌘ + Enter</span> to send
-                    </span>
+                <div className="flex items-center justify-between px-4 py-2.5 bg-white/5 border-t border-white/5">
+                  <div className="flex items-center gap-3 text-xs text-gray-500 font-mono">
+                     <span className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 border border-white/5">
+                       <span className="text-[10px]">⌘</span>
+                       <span>ENTER</span>
+                     </span>
                   </div>
                   <button
                     onClick={handleSend}
                     disabled={!input.trim() && files.length === 0 || agentState.status === 'analyzing'}
-                    className={`p-2 rounded-lg transition-all flex items-center gap-2 text-xs font-bold ${
+                    className={`px-4 py-1.5 rounded-lg transition-all flex items-center gap-2 text-xs font-bold tracking-wide uppercase ${
                       (!input.trim() && files.length === 0) || agentState.status === 'analyzing'
                         ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                        : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20'
+                        : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
                     }`}
                   >
                     {agentState.status === 'analyzing' ? (
                       <span className="flex items-center gap-2">Processing...</span>
                     ) : (
                       <>
-                        <span>EXECUTE</span>
+                        <span>Execute</span>
                         <Send size={14} />
                       </>
                     )}
@@ -416,9 +497,9 @@ export default function App() {
                 </div>
               </div>
             </div>
-            <div className="text-center mt-2">
-              <p className="text-[10px] text-gray-600">
-                  CodeAgent X interacts with simulated file context. Sensitive data is not persisted.
+            <div className="text-center mt-3">
+              <p className="text-[10px] text-gray-600 font-mono">
+                  Gemini 3 Preview Environment • Context Window: {files.length > 0 ? 'Active' : 'Empty'}
               </p>
             </div>
           </div>

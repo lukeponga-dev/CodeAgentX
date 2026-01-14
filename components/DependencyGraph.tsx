@@ -18,7 +18,6 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({ data }) => {
   // Prepare Data (Filter & Clone to handle D3 mutations safety)
   const graphData = useMemo(() => {
     // Deep clone/Sanitize to avoid issues with D3 mutation of props
-    // We preserve x/y if they exist to prevent jumping, but ensures links use string IDs
     const allNodes = data.nodes.map(n => ({ ...n }));
     const allLinks = data.links.map(l => ({
         ...l,
@@ -81,7 +80,7 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({ data }) => {
 
     // --- Elements ---
     const link = svg.append("g")
-      .attr("stroke", "#4b5563")
+      .attr("stroke", "#353e58")
       .attr("stroke-opacity", 0.6)
       .selectAll("line")
       .data(graphData.links)
@@ -94,36 +93,36 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({ data }) => {
       .data(graphData.nodes)
       .join("g")
       .attr("cursor", "pointer")
-      .call(drag(simulation) as any);
+      // @ts-ignore
+      .call(drag(simulation));
 
     // Node Visuals
     const getNodeColor = (type: string) => {
         switch(type) {
-            case 'log': return '#f87171';
-            case 'metric': return '#fbbf24';
-            case 'image': return '#c084fc';
-            case 'issue': return '#f472b6';
-            default: return '#3b82f6';
+            case 'log': return '#f87171'; // Red
+            case 'metric': return '#fbbf24'; // Amber
+            case 'image': return '#a78bfa'; // Purple
+            case 'issue': return '#f472b6'; // Pink
+            default: return '#3b82f6'; // Blue
         }
     };
 
     const circles = node.append("circle")
-      .attr("r", 8)
+      .attr("r", 6)
       .attr("fill", (d: any) => getNodeColor(d.type))
-      .attr("stroke", "#fff")
-      .attr("stroke-width", 1.5);
+      .attr("stroke", "#1a1f2e")
+      .attr("stroke-width", 2);
 
     const labels = node.append("text")
       .text((d: any) => d.name)
-      .attr("x", 12)
-      .attr("y", 4)
-      .style("fill", "#e5e7eb")
+      .attr("x", 10)
+      .attr("y", 3)
+      .style("fill", "#94a3b8")
       .style("font-size", "10px")
       .style("pointer-events", "none")
-      .style("text-shadow", "0 1px 2px rgba(0,0,0,0.8)");
+      .style("text-shadow", "0 1px 2px rgba(0,0,0,0.9)");
 
     // --- Interactions (Hover) ---
-    // Pre-calculate neighbors for O(1) lookups
     const neighbors = new Set<string>();
     graphData.links.forEach((l: any) => {
         neighbors.add(`${l.source.id}|${l.target.id}`);
@@ -139,14 +138,15 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({ data }) => {
         node.transition().duration(200).style("opacity", (o: any) => isConnected(d.id, o.id) ? 1 : 0.1);
         link.transition().duration(200).style("opacity", (l: any) => 
             (l.source.id === d.id || l.target.id === d.id) ? 1 : 0.05
-        ).attr("stroke", (l: any) => (l.source.id === d.id || l.target.id === d.id) ? "#fff" : "#4b5563");
+        ).attr("stroke", (l: any) => (l.source.id === d.id || l.target.id === d.id) ? "#e2e8f0" : "#353e58");
         
-        labels.style("font-weight", (o: any) => isConnected(d.id, o.id) ? "bold" : "normal");
+        labels.style("font-weight", (o: any) => isConnected(d.id, o.id) ? "bold" : "normal")
+              .style("fill", (o: any) => isConnected(d.id, o.id) ? "#fff" : "#94a3b8");
     })
     .on("mouseout", () => {
         node.transition().duration(200).style("opacity", 1);
-        link.transition().duration(200).style("opacity", 0.6).attr("stroke", "#4b5563");
-        labels.style("font-weight", "normal");
+        link.transition().duration(200).style("opacity", 0.6).attr("stroke", "#353e58");
+        labels.style("font-weight", "normal").style("fill", "#94a3b8");
     });
 
     // --- Ticks ---
@@ -160,14 +160,13 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({ data }) => {
       node.attr("transform", (d: any) => `translate(${d.x},${d.y})`);
     });
 
-    // Zoom
     const zoom = d3.zoom()
         .scaleExtent([0.1, 4])
         .on("zoom", (event) => svg.selectAll("g").attr("transform", event.transform));
     // @ts-ignore
     svg.call(zoom);
 
-  }, [graphData]); // Re-run when filtered data changes
+  }, [graphData]); 
 
   // Drag Helper
   const drag = (simulation: any) => {
@@ -190,9 +189,9 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({ data }) => {
   
   if (data.nodes.length === 0) {
     return (
-        <div className="flex flex-col items-center justify-center h-full text-gray-500">
-            <p className="mb-2 text-lg">No graph data</p>
-            <p className="text-xs">Upload code files with imports to visualize dependencies.</p>
+        <div className="flex flex-col items-center justify-center h-full text-gray-500 bg-cosmic-950">
+            <p className="mb-2 text-lg font-light text-gray-400">Visualization Empty</p>
+            <p className="text-xs text-gray-600">Upload code to view dependency graph</p>
         </div>
     )
   }
@@ -207,11 +206,14 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({ data }) => {
   ];
 
   return (
-    <div ref={containerRef} className="w-full h-full bg-[#0d1117] overflow-hidden relative">
-      {/* Controls Overlay */}
+    <div ref={containerRef} className="w-full h-full bg-cosmic-950 overflow-hidden relative">
+      <div className="absolute inset-0 z-0 opacity-[0.03]" style={{ 
+          backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', 
+          backgroundSize: '40px 40px' 
+      }}></div>
+
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-3 pointer-events-none">
-        {/* Search */}
-        <div className="pointer-events-auto bg-gray-900/90 backdrop-blur-sm border border-gray-800 rounded-lg shadow-xl p-2 flex items-center gap-2 w-64">
+        <div className="pointer-events-auto glass-panel rounded-lg shadow-xl p-2 flex items-center gap-2 w-64">
            <Search size={14} className="text-gray-500" />
            <input 
              type="text" 
@@ -223,24 +225,23 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({ data }) => {
            {searchTerm && <button onClick={() => setSearchTerm('')}><X size={14} className="text-gray-500 hover:text-gray-300" /></button>}
         </div>
 
-        {/* Filters */}
-        <div className="pointer-events-auto bg-gray-900/90 backdrop-blur-sm border border-gray-800 rounded-lg shadow-xl p-2 flex flex-col gap-1 w-64">
-           <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 px-1 mb-1">
-             <Filter size={12} />
-             <span>FILTER BY TYPE</span>
+        <div className="pointer-events-auto glass-panel rounded-lg shadow-xl p-3 flex flex-col gap-2 w-64">
+           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">
+             <Filter size={10} />
+             <span>Filter Nodes</span>
            </div>
-           <div className="grid grid-cols-2 gap-1">
+           <div className="grid grid-cols-2 gap-1.5">
              {types.map(t => (
                <button 
                  key={t.id}
                  onClick={() => setActiveType(t.id)}
-                 className={`flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors ${
+                 className={`flex items-center gap-2 px-2 py-1.5 rounded text-[10px] font-medium transition-all ${
                    activeType === t.id 
-                     ? 'bg-gray-800 text-white shadow-inner ring-1 ring-gray-700' 
-                     : 'text-gray-400 hover:bg-gray-800/50 hover:text-gray-200'
+                     ? 'bg-cosmic-600 text-white shadow-sm ring-1 ring-white/10' 
+                     : 'text-gray-500 hover:bg-white/5 hover:text-gray-300'
                  }`}
                >
-                 <span className={`w-2 h-2 rounded-full ${t.color}`}></span>
+                 <span className={`w-1.5 h-1.5 rounded-full ${t.color}`}></span>
                  {t.label}
                </button>
              ))}
@@ -248,7 +249,7 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({ data }) => {
         </div>
       </div>
 
-      <svg ref={svgRef} className="w-full h-full cursor-move outline-none"></svg>
+      <svg ref={svgRef} className="w-full h-full cursor-move outline-none relative z-1"></svg>
     </div>
   );
 };
