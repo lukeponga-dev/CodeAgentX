@@ -8,16 +8,46 @@ import { MessageBubble } from './components/MessageBubble';
 import { DependencyGraph } from './components/DependencyGraph';
 import { Send, Zap, BrainCircuit, Sparkles, MessageSquare, Network, Brain } from 'lucide-react';
 
+// Storage keys for persistence
+const STORAGE_KEYS = {
+  MESSAGES: 'codeagent_messages',
+  FILES: 'codeagent_files'
+};
+
 export default function App() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome',
-      role: 'model',
-      text: "I am CodeAgent X, powered by Gemini 3. \n\nI can analyze your codebase, interpret architecture diagrams, and debug failure signals. Upload your files to the context sidebar to get started.",
-      timestamp: Date.now()
+  // Initialize messages from localStorage or default
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.MESSAGES);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn('Failed to restore messages from storage:', e);
     }
-  ]);
-  const [files, setFiles] = useState<FileContext[]>([]);
+    return [
+      {
+        id: 'welcome',
+        role: 'model',
+        text: "I am CodeAgent X, powered by Gemini 3. \n\nI can analyze your codebase, interpret architecture diagrams, and debug failure signals. Upload your files to the context sidebar to get started.",
+        timestamp: Date.now()
+      }
+    ];
+  });
+
+  // Initialize files from localStorage or empty
+  const [files, setFiles] = useState<FileContext[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.FILES);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn('Failed to restore files from storage:', e);
+    }
+    return [];
+  });
+
   const [input, setInput] = useState('');
   const [agentMode, setAgentMode] = useState<AgentMode>(AgentMode.ARCHITECT);
   const [thinkingBudget, setThinkingBudget] = useState<number>(4096);
@@ -29,6 +59,24 @@ export default function App() {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // Persist messages whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(messages));
+    } catch (e) {
+      console.error('Failed to save messages to local storage (likely quota exceeded):', e);
+    }
+  }, [messages]);
+
+  // Persist files whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.FILES, JSON.stringify(files));
+    } catch (e) {
+      console.error('Failed to save files to local storage (likely quota exceeded):', e);
+    }
+  }, [files]);
 
   useEffect(() => {
     if (viewMode === ViewMode.CHAT) {

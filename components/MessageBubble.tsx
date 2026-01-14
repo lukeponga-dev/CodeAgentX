@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Message } from '../types';
 import { Bot, User, Cpu, ChevronDown, ChevronRight, Brain, CheckCircle2, ShieldCheck, Play } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -13,6 +13,13 @@ interface MessageBubbleProps {
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCodeReview }) => {
   const isUser = message.role === 'user';
   const [showThinking, setShowThinking] = useState(false);
+
+  // Auto-expand thinking when it becomes available
+  useEffect(() => {
+    if (message.thoughts) {
+      setShowThinking(true);
+    }
+  }, [message.thoughts]);
 
   return (
     <div className={`flex w-full mb-8 ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -60,8 +67,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCodeRev
                     </button>
                     
                     {showThinking && (
-                      <div className="mt-3 rounded-xl overflow-hidden border border-purple-500/20 bg-cosmic-950 shadow-inner">
-                        <div className="p-5 text-sm text-gray-400 font-mono leading-relaxed border-b border-purple-500/10 bg-purple-900/5">
+                      <div className="mt-3 rounded-xl overflow-hidden border border-purple-500/20 bg-cosmic-950 shadow-inner animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="p-5 text-sm text-gray-400 font-mono leading-relaxed border-b border-purple-500/10 bg-purple-900/5 max-h-[400px] overflow-y-auto">
                           <ReactMarkdown>{message.thoughts}</ReactMarkdown>
                         </div>
                         <div className="px-4 py-2 bg-purple-950/30 flex items-center justify-between select-none backdrop-blur-sm">
