@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Message } from '../types';
-import { Bot, User, Cpu, ChevronDown, ChevronRight, Brain, CheckCircle2, ShieldCheck, Terminal, Sparkles, Activity } from 'lucide-react';
+import { Bot, User, ChevronDown, ChevronRight, Brain, ShieldCheck, Activity } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
@@ -20,6 +21,93 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCodeRev
       setShowThinking(true);
     }
   }, [message.thoughts]);
+
+  // Comprehensive Markdown Components Styling
+  const markdownComponents = {
+    // Headings
+    h1: ({children}: any) => <h1 className="text-xl font-bold text-gray-100 mt-6 mb-4 border-b border-white/10 pb-2 flex items-center gap-2">{children}</h1>,
+    h2: ({children}: any) => <h2 className="text-lg font-semibold text-gray-100 mt-6 mb-3 flex items-center gap-2"><div className="w-1 h-4 bg-neon-cyan rounded-full"></div>{children}</h2>,
+    h3: ({children}: any) => <h3 className="text-base font-medium text-neon-cyan mt-5 mb-2 uppercase tracking-wide">{children}</h3>,
+    
+    // Text Elements
+    p: ({children}: any) => <p className="mb-4 leading-relaxed text-gray-300 last:mb-0">{children}</p>,
+    strong: ({children}: any) => <strong className="font-semibold text-gray-100">{children}</strong>,
+    em: ({children}: any) => <em className="italic text-gray-400">{children}</em>,
+    blockquote: ({children}: any) => (
+      <blockquote className="border-l-4 border-neon-purple/50 pl-4 py-1 my-4 bg-white/5 rounded-r-lg italic text-gray-400">
+        {children}
+      </blockquote>
+    ),
+
+    // Lists
+    ul: ({children}: any) => <ul className="list-disc pl-6 mb-4 space-y-1 text-gray-300 marker:text-gray-500">{children}</ul>,
+    ol: ({children}: any) => <ol className="list-decimal pl-6 mb-4 space-y-1 text-gray-300 marker:text-neon-cyan">{children}</ol>,
+    li: ({children}: any) => <li className="pl-1">{children}</li>,
+
+    // Tables
+    table: ({children}: any) => <div className="overflow-x-auto mb-4 rounded-lg border border-white/10"><table className="min-w-full text-left text-sm border-collapse">{children}</table></div>,
+    thead: ({children}: any) => <thead className="bg-white/5 text-gray-200 font-semibold">{children}</thead>,
+    tbody: ({children}: any) => <tbody className="divide-y divide-white/5">{children}</tbody>,
+    tr: ({children}: any) => <tr className="hover:bg-white/5 transition-colors">{children}</tr>,
+    th: ({children}: any) => <th className="px-4 py-3 font-medium text-neon-cyan/80 uppercase tracking-wider text-xs border-b border-white/10">{children}</th>,
+    td: ({children}: any) => <td className="px-4 py-3 text-gray-300 whitespace-pre-wrap">{children}</td>,
+
+    // Links
+    a: ({href, children}: any) => (
+      <a href={href} className="text-neon-cyan hover:text-neon-cyan/80 hover:underline underline-offset-4 transition-colors" target="_blank" rel="noreferrer">
+        {children}
+      </a>
+    ),
+    
+    // Code
+    code({node, inline, className, children, ...props}: any) {
+      const match = /language-(\w+)/.exec(className || '');
+      const language = match ? match[1] : '';
+      const codeContent = String(children).replace(/\n$/, '');
+
+      return !inline && match ? (
+        <div className="my-6 rounded-lg overflow-hidden border border-white/10 bg-[#1e1e1e] shadow-2xl relative group">
+          {/* Mac-style Window Header */}
+          <div className="flex items-center justify-between px-4 py-2 bg-[#252526] border-b border-white/5 select-none">
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1.5 opacity-60">
+                 <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f56]"></div>
+                 <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]"></div>
+                 <div className="w-2.5 h-2.5 rounded-full bg-[#27c93f]"></div>
+              </div>
+              <span className="ml-3 text-xs text-gray-500 font-mono font-medium">{language || 'text'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+                {onCodeReview && (
+                    <button 
+                    onClick={() => onCodeReview(codeContent, language)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 text-[10px] text-neon-emerald hover:text-white bg-neon-emerald/10 hover:bg-neon-emerald/20 px-2 py-1 rounded border border-neon-emerald/20"
+                    >
+                    <ShieldCheck size={12} />
+                    <span>Audit</span>
+                    </button>
+                )}
+            </div>
+          </div>
+          <SyntaxHighlighter
+            // @ts-ignore
+            style={vscDarkPlus}
+            language={language}
+            PreTag="div"
+            customStyle={{ margin: 0, padding: '1.5rem', background: 'transparent', fontSize: '13px', lineHeight: '1.6' }}
+            wrapLines={true}
+            {...props}
+          >
+            {codeContent}
+          </SyntaxHighlighter>
+        </div>
+      ) : (
+        <code className="bg-white/10 px-1.5 py-0.5 rounded text-neon-amber font-mono text-[0.85em] border border-white/5 mx-0.5">
+          {children}
+        </code>
+      )
+    }
+  };
 
   if (isUser) {
     return (
@@ -45,7 +133,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCodeRev
           <Bot size={16} className="text-neon-cyan" />
         </div>
 
-        <div className="flex flex-col w-full gap-2">
+        <div className="flex flex-col w-full min-w-0">
           {/* Header */}
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-bold text-neon-cyan tracking-widest uppercase font-mono">Gemini 3.0</span>
@@ -101,10 +189,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCodeRev
                                 </span>
                              </div>
                          ) : (
-                             <ReactMarkdown components={{
-                                 strong: ({node, ...props}) => <span className="text-neon-purple font-bold" {...props} />,
-                                 ul: ({node, ...props}) => <ul className="list-disc pl-4 space-y-1 my-2" {...props} />,
-                                 li: ({node, ...props}) => <li className="pl-1 marker:text-neon-purple/50" {...props} />
+                             <ReactMarkdown 
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                 ...markdownComponents,
+                                 p: ({children}: any) => <p className="mb-2 last:mb-0 text-gray-400">{children}</p>, 
+                                 strong: ({node, ...props}: any) => <span className="text-neon-purple font-bold" {...props} />,
+                                 code: ({inline, children}: any) => <code className="text-neon-purple/80 bg-neon-purple/10 px-1 rounded">{children}</code>
                              }}>{message.thoughts || ''}</ReactMarkdown>
                          )}
                     </div>
@@ -118,54 +209,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCodeRev
           {!message.isThinking && (
             <div className="prose prose-invert prose-sm max-w-none leading-7 text-gray-300 font-sans">
                 <ReactMarkdown
-                components={{
-                    h1: ({children}) => <h1 className="text-xl font-bold text-gray-100 mt-6 mb-4 border-b border-white/10 pb-2">{children}</h1>,
-                    h2: ({children}) => <h2 className="text-lg font-semibold text-gray-100 mt-5 mb-3">{children}</h2>,
-                    h3: ({children}) => <h3 className="text-base font-medium text-neon-cyan mt-4 mb-2 uppercase tracking-wide">{children}</h3>,
-                    p: ({children}) => <p className="mb-4 last:mb-0">{children}</p>,
-                    a: ({href, children}) => <a href={href} className="text-neon-cyan hover:underline underline-offset-4" target="_blank" rel="noreferrer">{children}</a>,
-                    code({node, inline, className, children, ...props}: any) {
-                    const match = /language-(\w+)/.exec(className || '');
-                    const language = match ? match[1] : '';
-                    const codeContent = String(children).replace(/\n$/, '');
-
-                    return !inline && match ? (
-                        <div className="my-6 rounded-lg overflow-hidden border border-white/10 bg-[#1e1e1e] shadow-2xl relative group">
-                            {/* Mac-style Window Header */}
-                            <div className="flex items-center justify-between px-4 py-2 bg-[#252526] border-b border-white/5 select-none">
-                                <div className="flex items-center gap-2">
-                                    <Terminal size={12} className="text-gray-500" />
-                                    <span className="text-xs text-gray-400 font-mono font-medium">{language}</span>
-                                </div>
-                                {onCodeReview && (
-                                    <button 
-                                    onClick={() => onCodeReview(codeContent, language)}
-                                    className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 text-[10px] text-neon-emerald hover:text-white bg-neon-emerald/10 hover:bg-neon-emerald/20 px-2 py-1 rounded border border-neon-emerald/20"
-                                    >
-                                    <ShieldCheck size={12} />
-                                    <span>Audit Code</span>
-                                    </button>
-                                )}
-                            </div>
-                            <SyntaxHighlighter
-                                // @ts-ignore
-                                style={vscDarkPlus}
-                                language={language}
-                                PreTag="div"
-                                customStyle={{ margin: 0, padding: '1.5rem', background: 'transparent', fontSize: '13px', lineHeight: '1.6' }}
-                                wrapLines={true}
-                                {...props}
-                            >
-                                {codeContent}
-                            </SyntaxHighlighter>
-                        </div>
-                    ) : (
-                        <code className="bg-white/10 px-1.5 py-0.5 rounded text-gray-200 font-mono text-[0.9em] border border-white/5">
-                        {children}
-                        </code>
-                    )
-                    }
-                }}
+                    remarkPlugins={[remarkGfm]}
+                    components={markdownComponents}
                 >
                 {message.text}
                 </ReactMarkdown>
