@@ -6,7 +6,7 @@ import { fetchGithubRepo } from './services/githubService';
 import { FileTree } from './components/FileTree';
 import { MessageBubble } from './components/MessageBubble';
 import { DependencyGraph } from './components/DependencyGraph';
-import { Send, Zap, BrainCircuit, MessageSquare, Network, Cpu, Command, Bug, PlayCircle, RotateCcw, Trash2, Save, Brain } from 'lucide-react';
+import { Send, Zap, BrainCircuit, MessageSquare, Network, Cpu, Command, Bug, PlayCircle, Trash2, Brain, Layout } from 'lucide-react';
 
 // Storage keys for persistence
 const STORAGE_KEYS = {
@@ -55,6 +55,7 @@ export default function App() {
   const [agentState, setAgentState] = useState<AgentState>({ status: 'idle' });
   const [isImporting, setIsImporting] = useState(false);
   const [lastSaved, setLastSaved] = useState<number | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -489,156 +490,155 @@ export default function App() {
       case 'verifying': return 'Simulating...';
       case 'writing': return 'Refining Fix...';
       case 'error': return 'System Error';
-      default: return 'Ready';
+      default: return 'Online';
     }
   };
 
   const getStatusColor = () => {
     switch (agentState.status) {
-      case 'analyzing': return 'bg-neon-purple';
-      case 'verifying': return 'bg-neon-amber';
-      case 'writing': return 'bg-neon-cyan';
-      case 'error': return 'bg-neon-rose';
-      default: return 'bg-neon-emerald';
+      case 'analyzing': return 'bg-neon-purple shadow-[0_0_10px_rgba(167,139,250,0.5)]';
+      case 'verifying': return 'bg-neon-amber shadow-[0_0_10px_rgba(251,191,36,0.5)]';
+      case 'writing': return 'bg-neon-cyan shadow-[0_0_10px_rgba(34,211,238,0.5)]';
+      case 'error': return 'bg-neon-rose shadow-[0_0_10px_rgba(251,113,133,0.5)]';
+      default: return 'bg-neon-emerald shadow-[0_0_10px_rgba(52,211,153,0.5)]';
     }
   };
 
   return (
-    <div className="flex h-screen w-screen bg-obsidian-950 text-gray-200 font-sans overflow-hidden bg-grid selection:bg-neon-cyan/20 selection:text-neon-cyan">
+    <div className="flex h-screen w-screen bg-obsidian-950 text-gray-200 font-sans overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-obsidian-900 via-obsidian-950 to-black selection:bg-neon-cyan/20 selection:text-neon-cyan">
+
+      {/* Decorative Grid Mesh */}
+      <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.03]"
+        style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }}>
+      </div>
+
       {/* File Tree Sidebar */}
-      <div className="z-20 relative h-full flex shrink-0">
-        <FileTree
-          files={files}
-          onRemove={removeFile}
-          onUpload={handleFileUpload}
-          onGithubImport={handleGithubImport}
-          isImporting={isImporting}
-        />
+      <div className={`${isSidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 ease-in-out relative z-20 flex shrink-0 border-r border-white/5 bg-obsidian-900/40 backdrop-blur-xl overflow-hidden`}>
+        <div className="w-64 h-full">
+          <FileTree
+            files={files}
+            onRemove={removeFile}
+            onUpload={handleFileUpload}
+            onGithubImport={handleGithubImport}
+            isImporting={isImporting}
+          />
+        </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col h-full relative z-10 bg-obsidian-950/50">
+      <div className="flex-1 flex flex-col h-full relative z-10">
 
-        {/* Modern Glass Header */}
-        <header className="h-16 flex items-center justify-between px-6 backdrop-blur-md border-b border-white/5 z-20 shrink-0">
+        {/* Header */}
+        <header className="h-16 flex items-center justify-between px-6 border-b border-white/5 bg-obsidian-950/20 backdrop-blur-sm z-30 shrink-0">
           <div className="flex items-center gap-4">
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-gray-500 hover:text-white transition-colors">
+              <Layout size={18} />
+            </button>
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-neon-purple to-indigo-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-neon-purple/20">
-                <Cpu size={16} />
+              <div className="relative">
+                <div className="absolute inset-0 bg-neon-cyan/20 blur-md rounded-full"></div>
+                <div className="w-8 h-8 relative bg-gradient-to-br from-obsidian-800 to-obsidian-950 rounded-lg border border-white/10 flex items-center justify-center text-neon-cyan shadow-lg">
+                  <Cpu size={16} />
+                </div>
               </div>
-              <div>
-                <h1 className="font-bold text-gray-100 tracking-tight leading-none">CodeAgent X</h1>
-                <span className="text-[10px] text-gray-500 font-mono tracking-wider uppercase">Architect Preview</span>
+              <div className="flex flex-col">
+                <h1 className="font-bold text-gray-100 tracking-tight leading-none text-sm">CodeAgent X</h1>
+                <span className="text-[9px] text-gray-500 font-mono tracking-widest uppercase mt-0.5">Gemini 3 Powered</span>
               </div>
             </div>
-            <div className={`w-[1px] h-6 bg-white/10 mx-2`}></div>
-            <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${getStatusColor()} animate-pulse`}></span>
-              <span className="text-[10px] text-gray-400 font-mono uppercase">
+
+            {/* Status Badge */}
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5 ml-4">
+              <span className={`w-1.5 h-1.5 rounded-full ${getStatusColor()} animate-pulse`}></span>
+              <span className="text-[10px] text-gray-400 font-mono uppercase tracking-wide">
                 {getStatusText()}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex p-0.5 bg-obsidian-800 rounded-lg border border-white/5 items-center">
-              {/* Persistence Status */}
-              {lastSaved && (
-                <div className="px-2 flex items-center gap-1.5 opacity-50 text-[10px] text-gray-400 font-mono border-r border-white/10 mr-1">
-                  <Save size={10} />
-                  <span>Saved</span>
-                </div>
-              )}
-              <button
-                onClick={handleResetSession}
-                className="p-1.5 rounded-md text-gray-500 hover:text-neon-rose hover:bg-neon-rose/10 transition-colors"
-                title="Reset Session & Clear Storage"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-
-            <div className="flex p-0.5 bg-obsidian-800 rounded-lg border border-white/5">
+          <div className="flex items-center gap-4">
+            {/* View Mode Switcher */}
+            <div className="flex p-1 bg-black/40 rounded-lg border border-white/5">
               <button
                 onClick={() => setViewMode(ViewMode.CHAT)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${viewMode === ViewMode.CHAT
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-medium transition-all uppercase tracking-wide ${viewMode === ViewMode.CHAT
                   ? 'bg-obsidian-700 text-white shadow-sm ring-1 ring-white/10'
                   : 'text-gray-500 hover:text-gray-300'
                   }`}
               >
-                <MessageSquare size={14} />
+                <MessageSquare size={12} />
                 Chat
               </button>
               <button
                 onClick={() => setViewMode(ViewMode.GRAPH)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${viewMode === ViewMode.GRAPH
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-medium transition-all uppercase tracking-wide ${viewMode === ViewMode.GRAPH
                   ? 'bg-obsidian-700 text-white shadow-sm ring-1 ring-white/10'
                   : 'text-gray-500 hover:text-gray-300'
                   }`}
               >
-                <Network size={14} />
-                Graph
+                <Network size={12} />
+                Map
               </button>
             </div>
 
-            <div className="flex p-0.5 bg-obsidian-800 rounded-lg border border-white/5">
+            <div className="w-[1px] h-6 bg-white/10"></div>
+
+            {/* Agent Mode Switcher */}
+            <div className="flex p-1 bg-black/40 rounded-lg border border-white/5">
               <button
                 onClick={() => handleModeChange(AgentMode.ARCHITECT)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${agentMode === AgentMode.ARCHITECT
+                title="Gemini 3 Pro (Thinking)"
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-medium transition-all uppercase tracking-wide ${agentMode === AgentMode.ARCHITECT
                   ? 'bg-neon-purple/10 text-neon-purple ring-1 ring-neon-purple/30'
                   : 'text-gray-500 hover:text-gray-300'
                   }`}
               >
-                <BrainCircuit size={14} />
+                <BrainCircuit size={12} />
                 Think
               </button>
               <button
                 onClick={() => handleModeChange(AgentMode.DEBUG)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${agentMode === AgentMode.DEBUG
+                title="Gemini 3 Pro (Self-Correction Loop)"
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-medium transition-all uppercase tracking-wide ${agentMode === AgentMode.DEBUG
                   ? 'bg-neon-amber/10 text-neon-amber ring-1 ring-neon-amber/30'
                   : 'text-gray-500 hover:text-gray-300'
                   }`}
               >
-                <Bug size={14} />
+                <Bug size={12} />
                 Debug
               </button>
               <button
                 onClick={() => handleModeChange(AgentMode.FAST)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${agentMode === AgentMode.FAST
+                title="Gemini 3 Flash (Fast)"
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-medium transition-all uppercase tracking-wide ${agentMode === AgentMode.FAST
                   ? 'bg-neon-cyan/10 text-neon-cyan ring-1 ring-neon-cyan/30'
                   : 'text-gray-500 hover:text-gray-300'
                   }`}
               >
-                <Zap size={14} />
+                <Zap size={12} />
                 Fast
               </button>
             </div>
 
-            {/* Reasoning Depth Control */}
-            {agentMode !== AgentMode.FAST && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-obsidian-800 rounded-lg border border-white/5 animate-fade-in">
-                <Brain className="text-neon-purple shrink-0" size={12} />
-                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tighter">Depth</span>
-                <select
-                  value={thinkingBudget}
-                  onChange={(e) => setThinkingBudget(Number(e.target.value))}
-                  className="bg-transparent text-[10px] font-mono text-neon-purple border-none p-0 focus:ring-0 cursor-pointer"
-                >
-                  <option value={2048}>2k</option>
-                  <option value={4096}>4k</option>
-                  <option value={8192}>8k</option>
-                  <option value={16384}>16k</option>
-                </select>
-              </div>
-            )}
+            {/* Settings/Reset */}
+            <div className="flex items-center">
+              <button
+                onClick={handleResetSession}
+                className="p-2 rounded-lg text-gray-500 hover:text-neon-rose hover:bg-neon-rose/10 transition-colors"
+                title="Clear Session"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
           </div>
         </header>
 
         {/* Viewport */}
         <div className="flex-1 overflow-hidden relative">
           {viewMode === ViewMode.CHAT ? (
-            <main className="h-full overflow-y-auto p-6 scroll-smooth pb-0">
-              <div className="max-w-4xl mx-auto pb-4">
+            <main className="h-full overflow-y-auto p-0 scroll-smooth pb-0">
+              {/* Messages Container with Max Width for readability */}
+              <div className="w-full max-w-5xl mx-auto min-h-full flex flex-col pt-6 px-6">
                 {messages.map((msg) => (
                   <MessageBubble
                     key={msg.id}
@@ -647,11 +647,11 @@ export default function App() {
                     onApplyChange={handleApplyChange}
                   />
                 ))}
-                <div ref={messagesEndRef} className="h-24" />
+                <div ref={messagesEndRef} className="h-32 shrink-0" /> {/* Spacer for floating input */}
               </div>
             </main>
           ) : (
-            <main className="h-full w-full">
+            <main className="h-full w-full bg-obsidian-950 relative">
               <DependencyGraph data={graphData} />
             </main>
           )}
@@ -659,10 +659,22 @@ export default function App() {
 
         {/* Floating Input Capsule */}
         {viewMode === ViewMode.CHAT && (
-          <div className="absolute bottom-6 left-0 right-0 z-30 px-6">
-            <div className="max-w-4xl mx-auto">
-              <div className={`glass-input rounded-2xl p-1.5 transition-all duration-300 focus-within:ring-1 focus-within:shadow-[0_0_30px_-5px_rgba(6,182,212,0.1)] ${agentMode === AgentMode.DEBUG ? 'focus-within:ring-neon-amber/30 border-neon-amber/20' : 'focus-within:ring-neon-cyan/30'
-                }`}>
+          <div className="absolute bottom-8 left-0 right-0 z-40 px-6 pointer-events-none">
+            <div className="max-w-3xl mx-auto pointer-events-auto">
+              <div className={`
+                 relative backdrop-blur-xl bg-obsidian-900/80 rounded-2xl p-1.5 transition-all duration-300 
+                 border border-white/10 shadow-2xl shadow-black/50
+                 focus-within:ring-1 focus-within:shadow-[0_0_40px_-10px_rgba(6,182,212,0.15)]
+                 ${agentMode === AgentMode.DEBUG ? 'focus-within:ring-neon-amber/40 border-neon-amber/20' : 'focus-within:ring-neon-cyan/40'}
+              `}>
+                {/* Reasoning Budget Badge (Only for thinking modes) */}
+                {agentMode !== AgentMode.FAST && (
+                  <div className="absolute -top-3 left-6 flex items-center gap-1.5 bg-obsidian-950 border border-white/10 px-2 py-0.5 rounded-full text-[9px] text-gray-400 font-mono shadow-sm">
+                    <Brain size={10} className="text-neon-purple" />
+                    <span>BUDGET: {(thinkingBudget / 1024).toFixed(0)}k</span>
+                  </div>
+                )}
+
                 <div className="relative">
                   <textarea
                     value={input}
@@ -670,42 +682,46 @@ export default function App() {
                     onKeyDown={handleKeyDown}
                     placeholder={
                       agentMode === AgentMode.DEBUG
-                        ? "Describe the bug to diagnose..."
-                        : files.length > 0 ? "Ask about current context..." : "Initialize task..."
+                        ? "Describe the bug, paste stack trace, or link to issue..."
+                        : files.length > 0 ? "Ask a question about the codebase..." : "Initialize CodeAgent..."
                     }
-                    className="w-full bg-transparent border-none text-gray-200 p-4 pr-12 focus:ring-0 resize-none min-h-[56px] max-h-[160px] text-sm font-mono placeholder-gray-600 leading-relaxed custom-scrollbar"
+                    className="w-full bg-transparent border-none text-gray-200 p-4 pr-12 focus:ring-0 resize-none min-h-[60px] max-h-[200px] text-sm font-sans placeholder-gray-500 leading-relaxed custom-scrollbar"
                     rows={1}
-                    style={{ height: 'auto', minHeight: '56px' }}
+                    style={{ height: 'auto', minHeight: '60px' }}
                   />
                   <div className="absolute right-2 bottom-2">
                     <button
                       onClick={handleSend}
                       disabled={!input.trim() && files.length === 0 || agentState.status !== 'idle'}
-                      className={`p-2.5 rounded-xl transition-all flex items-center justify-center ${(!input.trim() && files.length === 0) || agentState.status !== 'idle'
+                      className={`p-2 rounded-xl transition-all flex items-center justify-center ${(!input.trim() && files.length === 0) || agentState.status !== 'idle'
                         ? 'bg-white/5 text-gray-600 cursor-not-allowed'
                         : agentMode === AgentMode.DEBUG
-                          ? 'bg-neon-amber text-obsidian-950 hover:bg-amber-400 shadow-lg shadow-amber-500/20'
-                          : 'bg-neon-cyan text-obsidian-950 hover:bg-cyan-300 shadow-lg shadow-cyan-500/20'
+                          ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-obsidian-950 hover:brightness-110 shadow-lg shadow-amber-500/20'
+                          : 'bg-gradient-to-br from-cyan-400 to-blue-500 text-obsidian-950 hover:brightness-110 shadow-lg shadow-cyan-500/20'
                         }`}
                     >
                       {agentState.status !== 'idle' ? (
-                        <div className="w-4 h-4 border-2 border-obsidian-950 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="w-5 h-5 border-2 border-obsidian-950/30 border-t-obsidian-950 rounded-full animate-spin"></div>
                       ) : (
-                        agentMode === AgentMode.DEBUG ? <Bug size={16} strokeWidth={2.5} /> : <Send size={16} strokeWidth={2.5} />
+                        agentMode === AgentMode.DEBUG ? <Bug size={18} strokeWidth={2.5} /> : <Send size={18} strokeWidth={2.5} />
                       )}
                     </button>
                   </div>
                 </div>
+
+                {/* Context Footer inside Input */}
                 <div className="px-4 pb-2 flex items-center gap-4 border-t border-white/5 pt-2">
-                  <span className="text-[10px] text-gray-600 font-mono flex items-center gap-1.5">
-                    <Command size={10} /> RETURN to send
+                  <span className="text-[10px] text-gray-600 font-mono flex items-center gap-1.5 group cursor-help">
+                    <div className="p-0.5 rounded border border-gray-700 bg-white/5 group-hover:bg-white/10 transition-colors"><Command size={8} /></div>
+                    <span>Return to send</span>
                   </span>
-                  <span className="text-[10px] text-gray-600 font-mono">
-                    Context: <span className={files.length > 0 ? "text-neon-emerald" : "text-gray-500"}>{files.length} files</span>
+                  <div className="h-3 w-[1px] bg-white/10"></div>
+                  <span className="text-[10px] text-gray-600 font-mono flex items-center gap-1.5">
+                    <span className={files.length > 0 ? "text-neon-emerald" : "text-gray-500"}>{files.length} files loaded</span>
                   </span>
                   {agentMode === AgentMode.DEBUG && (
-                    <span className="text-[10px] text-neon-amber font-mono flex items-center gap-1.5 ml-auto">
-                      <PlayCircle size={10} /> Auto-Verification Active
+                    <span className="text-[10px] text-neon-amber font-mono flex items-center gap-1.5 ml-auto animate-pulse">
+                      <PlayCircle size={10} /> Auto-Verification
                     </span>
                   )}
                 </div>

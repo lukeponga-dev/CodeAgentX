@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Message } from '../types';
-import { Bot, User, ChevronDown, ChevronRight, Brain, ShieldCheck, Activity } from 'lucide-react';
+import { Bot, User, ChevronDown, ChevronRight, Brain, ShieldCheck, Activity, Copy, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -40,7 +40,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCodeRev
   }, [message.thoughts]);
 
   // Comprehensive Markdown Components Styling
-  const markdownComponents = {
+  const markdownComponents = React.useMemo(() => ({
     // Headings
     h1: ({ children }: any) => <h1 className="text-xl font-bold text-gray-100 mt-6 mb-4 border-b border-white/10 pb-2 flex items-center gap-2">{children}</h1>,
     h2: ({ children }: any) => <h2 className="text-lg font-semibold text-gray-100 mt-6 mb-3 flex items-center gap-2"><div className="w-1 h-4 bg-neon-cyan rounded-full"></div>{children}</h2>,
@@ -81,6 +81,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCodeRev
       const match = /language-(\w+)/.exec(className || '');
       const language = match ? match[1] : '';
       const codeContent = String(children).replace(/\n$/, '');
+      const [copied, setCopied] = useState(false);
+
+      const handleCopy = () => {
+        navigator.clipboard.writeText(codeContent);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      };
 
       return !inline && match ? (
         <div className="my-6 rounded-lg overflow-hidden border border-white/10 bg-[#1e1e1e] shadow-2xl relative group">
@@ -95,6 +102,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCodeRev
               <span className="ml-3 text-xs text-gray-500 font-mono font-medium">{language || 'text'}</span>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={handleCopy}
+                className={`transition-all flex items-center gap-1.5 text-[10px] px-2 py-1 rounded border ${copied
+                    ? 'text-neon-emerald bg-neon-emerald/10 border-neon-emerald/20'
+                    : 'text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 border-white/10 opacity-0 group-hover:opacity-100'
+                  }`}
+              >
+                {copied ? <Check size={12} /> : <Copy size={12} />}
+                <span>{copied ? 'Copied' : 'Copy'}</span>
+              </button>
               {onApplyChange && extractFileName(codeContent) && (
                 <button
                   onClick={() => onApplyChange(extractFileName(codeContent)!, codeContent)}
@@ -133,7 +150,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCodeRev
         </code>
       )
     }
-  };
+  }), [onApplyChange, onCodeReview]);
 
   if (isUser) {
     return (
