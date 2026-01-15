@@ -76,44 +76,49 @@ export const sendMessageToGemini = async (
 
   const contentParts: any[] = [];
 
+  const contents: any[] = [];
+
+  // 1. Add History
+  if (history && history.length > 0) {
+    history.forEach(item => {
+      contents.push({
+        role: item.role === 'user' ? 'user' : 'model',
+        parts: item.parts
+      });
+    });
+  }
+
+  // 2. Add Current Request (with file context)
+  const currentParts: any[] = [];
+  
   const filesToInclude = relevantFileIds 
     ? contextFiles.filter(f => relevantFileIds.includes(f.id))
     : contextFiles;
 
   if (filesToInclude.length > 0) {
-    const contextDescription = "Here is the active file context and failure signals for your analysis:\n";
-    contentParts.push({ text: contextDescription });
+    const contextDescription = "Here is the current architectural context and failure signals:\n";
+    currentParts.push({ text: contextDescription });
 
     filesToInclude.forEach(file => {
       if (file.type === 'image') {
-        contentParts.push({
+        currentParts.push({
           inlineData: {
             mimeType: file.mimeType || 'image/png',
             data: file.content
           }
         });
-        contentParts.push({ text: `\n[Image: ${file.name}]\n` });
-      } else if (file.type === 'metric') {
-        contentParts.push({
-          text: `\n--- START OF METRICS (DATA: ${file.name}) ---\n${file.content}\n--- END OF METRICS ---\n`
-        });
-      } else if (file.type === 'issue') {
-        contentParts.push({
-          text: `\n--- START OF USER REPORT (${file.name}) ---\n${file.content}\n--- END OF REPORT ---\n`
-        });
-      } else if (file.type === 'log') {
-        contentParts.push({
-          text: `\n--- START OF LOGS (${file.name}) ---\n${file.content}\n--- END OF LOGS ---\n`
-        });
+        currentParts.push({ text: `\n[Context Image: ${file.name}]\n` });
       } else {
-        contentParts.push({
-          text: `\n--- START OF CODE FILE ${file.name} ---\n${file.content}\n--- END OF FILE ---\n`
+        const prefix = file.type === 'log' ? 'LOGS' : file.type === 'metric' ? 'METRICS' : file.type === 'issue' ? 'REPORT' : 'CODE';
+        currentParts.push({
+          text: `\n--- START OF ${prefix} (${file.name}) ---\n${file.content}\n--- END OF ${prefix} ---\n`
         });
       }
     });
   }
 
-  contentParts.push({ text: prompt });
+  currentParts.push({ text: prompt });
+  contents.push({ role: 'user', parts: currentParts });
 
   let retries = 0;
   const MAX_RETRIES = 5;
@@ -122,10 +127,7 @@ export const sendMessageToGemini = async (
     try {
       const response: GenerateContentResponse = await ai.models.generateContent({
         model: modelName,
-        contents: {
-          role: 'user',
-          parts: contentParts
-        },
+        contents: contents,
         config: config
       });
 

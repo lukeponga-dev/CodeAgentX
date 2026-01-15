@@ -10,7 +10,7 @@ interface DependencyGraphProps {
 export const DependencyGraph: React.FC<DependencyGraphProps> = ({ data }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  
+
   // Interaction State
   const [activeType, setActiveType] = useState<string | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -20,21 +20,21 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({ data }) => {
     // Deep clone/Sanitize to avoid issues with D3 mutation of props
     const allNodes = data.nodes.map(n => ({ ...n }));
     const allLinks = data.links.map(l => ({
-        ...l,
-        source: typeof l.source === 'object' ? (l.source as any).id : l.source,
-        target: typeof l.target === 'object' ? (l.target as any).id : l.target
+      ...l,
+      source: typeof l.source === 'object' ? (l.source as any).id : l.source,
+      target: typeof l.target === 'object' ? (l.target as any).id : l.target
     }));
 
     // Filter
     const nodes = allNodes.filter(n => {
-        const typeMatch = activeType === 'all' || n.type === activeType;
-        const nameMatch = n.name.toLowerCase().includes(searchTerm.toLowerCase());
-        return typeMatch && nameMatch;
+      const typeMatch = activeType === 'all' || n.type === activeType;
+      const nameMatch = n.name.toLowerCase().includes(searchTerm.toLowerCase());
+      return typeMatch && nameMatch;
     });
 
     const nodeIds = new Set(nodes.map(n => n.id));
-    const links = allLinks.filter(l => 
-        nodeIds.has(l.source as string) && nodeIds.has(l.target as string)
+    const links = allLinks.filter(l =>
+      nodeIds.has(l.source as string) && nodeIds.has(l.target as string)
     );
 
     return { nodes, links };
@@ -98,17 +98,27 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({ data }) => {
 
     // Node Visuals
     const getNodeColor = (type: string) => {
-        switch(type) {
-            case 'log': return '#f87171'; // Red
-            case 'metric': return '#fbbf24'; // Amber
-            case 'image': return '#a78bfa'; // Purple
-            case 'issue': return '#f472b6'; // Pink
-            default: return '#3b82f6'; // Blue
-        }
+      switch (type) {
+        case 'log': return '#f87171'; // Red
+        case 'metric': return '#fbbf24'; // Amber
+        case 'image': return '#a78bfa'; // Purple
+        case 'issue': return '#f472b6'; // Pink
+        default: return '#3b82f6'; // Blue
+      }
     };
 
+    // Calculate Node Sizes based on Degree
+    const degree = new Map<string, number>();
+    graphData.nodes.forEach(n => degree.set(n.id, 0));
+    graphData.links.forEach(l => {
+      const sId = typeof l.source === 'object' ? (l.source as any).id : l.source;
+      const tId = typeof l.target === 'object' ? (l.target as any).id : l.target;
+      degree.set(sId, (degree.get(sId) || 0) + 1);
+      degree.set(tId, (degree.get(tId) || 0) + 1);
+    });
+
     const circles = node.append("circle")
-      .attr("r", 6)
+      .attr("r", (d: any) => 5 + Math.sqrt(degree.get(d.id) || 0) * 3)
       .attr("fill", (d: any) => getNodeColor(d.type))
       .attr("stroke", "#1a1f2e")
       .attr("stroke-width", 2);
@@ -125,29 +135,29 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({ data }) => {
     // --- Interactions (Hover) ---
     const neighbors = new Set<string>();
     graphData.links.forEach((l: any) => {
-        neighbors.add(`${l.source.id}|${l.target.id}`);
-        neighbors.add(`${l.target.id}|${l.source.id}`);
+      neighbors.add(`${l.source.id}|${l.target.id}`);
+      neighbors.add(`${l.target.id}|${l.source.id}`);
     });
 
     const isConnected = (a: string, b: string) => {
-        return a === b || neighbors.has(`${a}|${b}`);
+      return a === b || neighbors.has(`${a}|${b}`);
     };
 
     node.on("mouseover", (event, d: any) => {
-        // Dim unrelated
-        node.transition().duration(200).style("opacity", (o: any) => isConnected(d.id, o.id) ? 1 : 0.1);
-        link.transition().duration(200).style("opacity", (l: any) => 
-            (l.source.id === d.id || l.target.id === d.id) ? 1 : 0.05
-        ).attr("stroke", (l: any) => (l.source.id === d.id || l.target.id === d.id) ? "#e2e8f0" : "#353e58");
-        
-        labels.style("font-weight", (o: any) => isConnected(d.id, o.id) ? "bold" : "normal")
-              .style("fill", (o: any) => isConnected(d.id, o.id) ? "#fff" : "#94a3b8");
+      // Dim unrelated
+      node.transition().duration(200).style("opacity", (o: any) => isConnected(d.id, o.id) ? 1 : 0.1);
+      link.transition().duration(200).style("opacity", (l: any) =>
+        (l.source.id === d.id || l.target.id === d.id) ? 1 : 0.05
+      ).attr("stroke", (l: any) => (l.source.id === d.id || l.target.id === d.id) ? "#e2e8f0" : "#353e58");
+
+      labels.style("font-weight", (o: any) => isConnected(d.id, o.id) ? "bold" : "normal")
+        .style("fill", (o: any) => isConnected(d.id, o.id) ? "#fff" : "#94a3b8");
     })
-    .on("mouseout", () => {
+      .on("mouseout", () => {
         node.transition().duration(200).style("opacity", 1);
         link.transition().duration(200).style("opacity", 0.6).attr("stroke", "#353e58");
         labels.style("font-weight", "normal").style("fill", "#94a3b8");
-    });
+      });
 
     // --- Ticks ---
     simulation.on("tick", () => {
@@ -161,12 +171,12 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({ data }) => {
     });
 
     const zoom = d3.zoom()
-        .scaleExtent([0.1, 4])
-        .on("zoom", (event) => svg.selectAll("g").attr("transform", event.transform));
+      .scaleExtent([0.1, 4])
+      .on("zoom", (event) => svg.selectAll("g").attr("transform", event.transform));
     // @ts-ignore
     svg.call(zoom);
 
-  }, [graphData]); 
+  }, [graphData]);
 
   // Drag Helper
   const drag = (simulation: any) => {
@@ -186,13 +196,13 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({ data }) => {
     }
     return d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
   };
-  
+
   if (data.nodes.length === 0) {
     return (
-        <div className="flex flex-col items-center justify-center h-full text-gray-500 bg-cosmic-950">
-            <p className="mb-2 text-lg font-light text-gray-400">Visualization Empty</p>
-            <p className="text-xs text-gray-600">Upload code to view dependency graph</p>
-        </div>
+      <div className="flex flex-col items-center justify-center h-full text-gray-500 bg-cosmic-950">
+        <p className="mb-2 text-lg font-light text-gray-400">Visualization Empty</p>
+        <p className="text-xs text-gray-600">Upload code to view dependency graph</p>
+      </div>
     )
   }
 
@@ -207,45 +217,44 @@ export const DependencyGraph: React.FC<DependencyGraphProps> = ({ data }) => {
 
   return (
     <div ref={containerRef} className="w-full h-full bg-cosmic-950 overflow-hidden relative">
-      <div className="absolute inset-0 z-0 opacity-[0.03]" style={{ 
-          backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', 
-          backgroundSize: '40px 40px' 
+      <div className="absolute inset-0 z-0 opacity-[0.03]" style={{
+        backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)',
+        backgroundSize: '40px 40px'
       }}></div>
 
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-3 pointer-events-none">
         <div className="pointer-events-auto glass-panel rounded-lg shadow-xl p-2 flex items-center gap-2 w-64">
-           <Search size={14} className="text-gray-500" />
-           <input 
-             type="text" 
-             value={searchTerm}
-             onChange={(e) => setSearchTerm(e.target.value)}
-             placeholder="Search modules..." 
-             className="bg-transparent border-none text-xs text-gray-200 focus:outline-none w-full placeholder-gray-600"
-           />
-           {searchTerm && <button onClick={() => setSearchTerm('')}><X size={14} className="text-gray-500 hover:text-gray-300" /></button>}
+          <Search size={14} className="text-gray-500" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search modules..."
+            className="bg-transparent border-none text-xs text-gray-200 focus:outline-none w-full placeholder-gray-600"
+          />
+          {searchTerm && <button onClick={() => setSearchTerm('')}><X size={14} className="text-gray-500 hover:text-gray-300" /></button>}
         </div>
 
         <div className="pointer-events-auto glass-panel rounded-lg shadow-xl p-3 flex flex-col gap-2 w-64">
-           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">
-             <Filter size={10} />
-             <span>Filter Nodes</span>
-           </div>
-           <div className="grid grid-cols-2 gap-1.5">
-             {types.map(t => (
-               <button 
-                 key={t.id}
-                 onClick={() => setActiveType(t.id)}
-                 className={`flex items-center gap-2 px-2 py-1.5 rounded text-[10px] font-medium transition-all ${
-                   activeType === t.id 
-                     ? 'bg-cosmic-600 text-white shadow-sm ring-1 ring-white/10' 
-                     : 'text-gray-500 hover:bg-white/5 hover:text-gray-300'
-                 }`}
-               >
-                 <span className={`w-1.5 h-1.5 rounded-full ${t.color}`}></span>
-                 {t.label}
-               </button>
-             ))}
-           </div>
+          <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">
+            <Filter size={10} />
+            <span>Filter Nodes</span>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {types.map(t => (
+              <button
+                key={t.id}
+                onClick={() => setActiveType(t.id)}
+                className={`flex items-center gap-2 px-2 py-1.5 rounded text-[10px] font-medium transition-all ${activeType === t.id
+                    ? 'bg-cosmic-600 text-white shadow-sm ring-1 ring-white/10'
+                    : 'text-gray-500 hover:bg-white/5 hover:text-gray-300'
+                  }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${t.color}`}></span>
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
