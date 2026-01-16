@@ -44,15 +44,17 @@ CodeAgent X operates in three distinct cognitive states:
 2.  **Debug (Fix)**: Autonomous repair loop that verifies logic in a mental sandbox before proposing solutions.
 3.  **Fast (Execute)**: Low-latency mode for quick refactoring, documentation, and logic explanations.
 
-## 📦 Installation
+## 📦 Installation & Setup
 
 Get CodeAgent X running in your local environment in under 2 minutes.
 
 ### Prerequisites
-- **Node.js**: Version 18 or higher.
-- **Gemini API Key**: Obtainable via [Google AI Studio](https://aistudio.google.com/).
+- **Node.js**: Version 18.0.0 or higher (LTS recommended)
+- **npm**: Version 8.0.0 or higher (comes with Node.js)
+- **Git**: Version 2.30.0 or higher
+- **Google AI Studio Account**: For Gemini API access ([Get API Key](https://aistudio.google.com/))
 
-### Setup
+### Quick Setup
 
 1. **Clone & Enter**
    ```bash
@@ -71,10 +73,40 @@ Get CodeAgent X running in your local environment in under 2 minutes.
    VITE_GEMINI_API_KEY=your_api_key_here
    ```
 
-4. **Launch**
+4. **Launch Development Server**
    ```bash
    npm run dev
    ```
+
+5. **Open in Browser**
+   - Navigate to `http://localhost:5173` (default Vite port)
+
+### Advanced Setup Options
+
+#### Using Yarn
+```bash
+yarn install
+yarn dev
+```
+
+#### Using pnpm
+```bash
+pnpm install
+pnpm dev
+```
+
+#### Environment Variables
+```env
+# Required
+VITE_GEMINI_API_KEY=your_gemini_api_key_here
+
+# Optional
+VITE_APP_ENV=development
+VITE_DEBUG_MODE=true
+VITE_ANALYTICS_ID=your_analytics_id
+```
+
+**Security Note**: Never commit `.env.local` or any file containing API keys to version control.
 
 ## 🖥️ Usage Guide
 
@@ -99,6 +131,158 @@ Enter **Debug Mode** and describe a stack trace. CodeAgent X will:
 - **Icons**: Lucide React
 - **Logic**: TypeScript
 - **Bundler**: Vite
+
+## 🔧 Development
+
+### Project Structure
+```
+CodeAgentX/
+├── public/                 # Static assets
+├── src/
+│   ├── components/         # React components
+│   │   ├── DependencyGraph.tsx
+│   │   ├── FileTree.tsx
+│   │   ├── GithubModal.tsx
+│   │   └── MessageBubble.tsx
+│   ├── services/           # Business logic services
+│   │   ├── dependencyService.ts
+│   │   ├── geminiService.ts
+│   │   └── githubService.ts
+│   ├── types.ts            # TypeScript type definitions
+│   ├── App.tsx             # Main application component
+│   └── index.tsx           # Application entry point
+├── package.json            # Dependencies and scripts
+├── vite.config.ts          # Vite configuration
+├── tsconfig.json           # TypeScript configuration
+└── README.md               # Project documentation
+```
+
+### Development Scripts
+```bash
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+### Code Quality
+- **ESLint**: Code linting and style enforcement
+- **Prettier**: Code formatting
+- **TypeScript**: Static type checking
+
+## 🔑 API Configuration
+
+### Gemini API Integration
+
+CodeAgent X uses Google's Gemini models with different capabilities:
+
+- **Architect Mode**: Gemini 3 Pro with extended thinking budget (up to 4096 tokens)
+- **Debug Mode**: Gemini 3 Pro with iterative verification loop
+- **Fast Mode**: Gemini 3 Flash for quick responses
+
+### Rate Limits & Costs
+
+Be aware of Gemini API limitations:
+- **Rate Limits**: Vary by model and usage tier
+- **Token Limits**: Context window constraints (varies by model)
+- **Cost**: Pay-per-use pricing model
+
+Monitor usage in the [Google Cloud Console](https://console.cloud.google.com/).
+
+## 🚀 Advanced Usage
+
+### Agent Modes Deep Dive
+
+#### Architect Mode (Think)
+- **Use Case**: Complex refactoring, system design, architectural decisions
+- **Thinking Budget**: Configurable up to 4096 tokens
+- **Latency**: High (10-30 seconds)
+- **Best For**: Understanding large codebases, planning major changes
+
+#### Debug Mode (Fix)
+- **Use Case**: Bug fixing, error resolution, code debugging
+- **Features**: Autonomous verification loop with mental simulation
+- **Process**: Draft → Verify → Refine (if needed)
+- **Best For**: Stack trace analysis, runtime error fixes
+
+#### Fast Mode (Execute)
+- **Use Case**: Quick questions, documentation, simple refactoring
+- **Latency**: Low (2-5 seconds)
+- **Best For**: Code explanations, documentation generation
+
+### File Types Supported
+- **Code Files**: `.js`, `.ts`, `.tsx`, `.py`, `.java`, etc.
+- **Config Files**: `package.json`, `tsconfig.json`, etc.
+- **Documentation**: `.md`, `.txt`
+- **Logs**: `.log` files for error analysis
+- **Images**: Screenshots, diagrams for multimodal analysis
+
+### Session Management
+- **Persistence**: Chat history and loaded files saved to localStorage
+- **Reset**: Clear session data with the trash icon
+- **Limits**: Browser storage quotas may apply for large codebases
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+#### Build Errors
+**Issue**: `Module not found` errors
+**Solution**:
+```bash
+rm -rf node_modules package-lock.json
+npm install
+```
+
+#### API Errors
+**Issue**: `API_KEY_INVALID`
+**Solution**: Verify API key in `.env.local` and ensure it's active in Google AI Studio
+
+**Issue**: Rate limit exceeded
+**Solution**: Wait for quota reset or upgrade your Google Cloud plan
+
+#### Performance Issues
+**Issue**: Slow response times
+**Solution**:
+- Check internet connection
+- Verify API key permissions
+- Reduce thinking budget in Architect mode
+- Switch to Fast mode for simple queries
+
+#### File Upload Issues
+**Issue**: Files not loading
+**Solution**: Check file size limits (recommended <10MB total) and supported formats
+
+### Debug Mode
+Enable debug logging:
+```env
+VITE_DEBUG_MODE=true
+```
+Check browser console for detailed error messages.
+
+### Getting Help
+1. Check [existing issues](https://github.com/user/CodeAgentX/issues)
+2. Review [SETUP.md](./SETUP.md) for detailed setup instructions
+3. Create a new issue with:
+   - Error messages
+   - Browser/OS information
+   - Steps to reproduce
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details on:
+- Development workflow
+- Code standards
+- Testing guidelines
+- Pull request process
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
