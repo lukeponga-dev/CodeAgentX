@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 .env
 .agent/rules/instructions.md
+
+# Local Netlify folder
+.netlify

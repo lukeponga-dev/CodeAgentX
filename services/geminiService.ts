@@ -1,8 +1,14 @@
+// services/geminiService.ts
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { AgentMode, FileContext } from '../types';
 
-// Initialize the client.
-const apiKey = process.env.API_KEY || '';
+// FIX: Use Vite standard for environment variables
+const apiKey = import.meta.env.GEMINI_API_KEY || '';
+
+if (!apiKey) {
+  console.error("CRITICAL: VITE_GEMINI_API_KEY is missing. AI features will fail.");
+}
+
 const ai = new GoogleGenAI({ apiKey: apiKey });
 
 const SYSTEM_INSTRUCTION = `
@@ -43,7 +49,7 @@ const getRetryDelay = (error: any): number => {
       if (!isNaN(seconds)) return (seconds + 1) * 1000;
     }
   }
-  
+
   const message = actualError.message || '';
   const match = message.match(/retry in (\d+(\.\d+)?)s/);
   if (match && match[1]) {
@@ -61,20 +67,24 @@ export const sendMessageToGemini = async (
   relevantFileIds: string[] | null = null,
   thinkingBudget: number = 0
 ): Promise<string> => {
-  
-  const modelName = mode === AgentMode.ARCHITECT 
-    ? 'gemini-3-pro-preview' 
-    : 'gemini-3-flash-preview';
+
+  if (!apiKey) {
+    return "Configuration Error: API Key missing. Please check your .env.local file.";
+  }
+
+  // Update model names to match latest availability
+  const modelName = mode === AgentMode.ARCHITECT
+    ? 'gemini-3-pro-preview'
+    : 'gemini-2.0-flash';
 
   const config: any = {
     systemInstruction: SYSTEM_INSTRUCTION,
   };
 
-  if (thinkingBudget > 0) {
+  // Only apply thinking budget if supported by the specific model variant
+  if (thinkingBudget > 0 && modelName.includes('thinking')) {
     config.thinkingConfig = { thinkingBudget };
   }
-
-  const contentParts: any[] = [];
 
   const contents: any[] = [];
 
@@ -90,8 +100,8 @@ export const sendMessageToGemini = async (
 
   // 2. Add Current Request (with file context)
   const currentParts: any[] = [];
-  
-  const filesToInclude = relevantFileIds 
+
+  const filesToInclude = relevantFileIds
     ? contextFiles.filter(f => relevantFileIds.includes(f.id))
     : contextFiles;
 
@@ -122,7 +132,7 @@ export const sendMessageToGemini = async (
 
   let retries = 0;
   const MAX_RETRIES = 5;
-  
+
   while (retries <= MAX_RETRIES) {
     try {
       const response: GenerateContentResponse = await ai.models.generateContent({
@@ -131,49 +141,67 @@ export const sendMessageToGemini = async (
         config: config
       });
 
-      return response.text || "I analyzed the input but could not generate a textual response.";
+      if (!response.candidates || response.candidates.length === 0) {
+        return "I analyzed the input but no response candidates were generated.";
+      }
+
+      const candidate = response.candidates[0];
+      let fullResponseText = "";
+
+      // Manually extract and wrap thoughts if present in the parts (new thinking models)
+      const thoughtParts = candidate.content?.parts?.filter(p => p.thought);
+      if (thoughtParts && thoughtParts.length > 0) {
+        const thoughts = thoughtParts.map(p => p.text).filter(Boolean).join('\n');
+        if (thoughts) {
+          fullResponseText += `<thinking>\n${thoughts}\n</thinking>\n\n`;
+        }
+      }
+
+      // Add the final textual answer
+      fullResponseText += response.text || "";
+
+      return fullResponseText || "I analyzed the input but could not generate a textual response.";
 
     } catch (error: any) {
       const actualError = error.error || error;
-      
-      // Basic detection of rate limit/quota errors
+
       const status = actualError?.status;
       const code = actualError?.code;
       const message = actualError?.message || '';
 
-      const isQuotaError = 
-        status === 429 || 
-        code === 429 || 
+      const isQuotaError =
+        status === 429 ||
+        code === 429 ||
         status === 503 ||
         status === 'RESOURCE_EXHAUSTED' ||
-        message.includes('429') || 
+        message.includes('429') ||
         message.includes('Quota exceeded') ||
         message.includes('RESOURCE_EXHAUSTED');
 
       if (isQuotaError && retries < MAX_RETRIES) {
         retries++;
-        
+
         let delay = getRetryDelay(error);
-        
+
         if (delay === 0) {
-            delay = 2000 * Math.pow(2, retries); 
+          delay = 2000 * Math.pow(2, retries);
         }
 
         console.warn(`Gemini API Quota/Rate Limit. Waiting ${delay}ms before retry (Attempt ${retries}/${MAX_RETRIES})`);
         await wait(delay);
         continue;
       }
-      
+
       console.error("Gemini API Error:", error);
-      
+
       if (isQuotaError) {
-        return `Error: System overloaded or quota exceeded. The model asked to wait, but retries were exhausted after ${retries} attempts. \n\nTip: Try switching to **FAST** mode (Gemini Flash) which has higher limits.`;
+        return `Error: System overloaded or quota exceeded. The model asked to wait, but retries were exhausted after ${retries} attempts. \n\nTip: Try switching to **FAST** mode which has higher limits.`;
       }
 
       const errorMessage = actualError instanceof Error ? actualError.message : (message || "Unknown error occurred");
       return `Error: ${errorMessage}`;
     }
   }
-  
+
   return "Error: Failed to connect to Gemini API after multiple attempts.";
 };
